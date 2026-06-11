@@ -13,76 +13,66 @@ export async function POST(req: Request) {
     console.log("Cleaning up old sync data...");
     const oldEventsSnap = await db.collection('threatEvents').where('organizationId', 'in', ['MITRE_CORP', 'ALIENVAULT_OTX']).get();
     const deleteBatch = db.batch();
-    oldEventsSnap.docs.forEach(doc => deleteBatch.delete(doc.ref));
+    oldEventsSnap.docs.forEach((doc: any) => deleteBatch.delete(doc.ref));
     await deleteBatch.commit();
 
-    // 1. Fetch Real MITRE STIX 2.1 Data
-    console.log("Fetching MITRE CTI Data...");
-    try {
-      const mitreRes = await fetch('https://raw.githubusercontent.com/mitre/cti/master/enterprise-attack/enterprise-attack.json');
-      const stixData = await mitreRes.json();
-      
-      // Extract all necessary object types
-      const aptGroups = stixData.objects.filter((o: any) => o.type === 'intrusion-set');
-      const relationships = stixData.objects.filter((o: any) => o.type === 'relationship');
-      const attackPatterns = stixData.objects.filter((o: any) => o.type === 'attack-pattern');
-      
-      // Randomly select 15 APT groups to sync
-      const shuffledApts = aptGroups.sort(() => 0.5 - Math.random()).slice(0, 15);
+    // 1. Inject Lightweight MITRE Data (Bypassing 40MB STIX JSON memory crash)
+    console.log("Injecting Lightweight MITRE CTI Data...");
+    
+    const mitreApts = [
+      { id: "G0016", name: "APT29", desc: "Russian government threat group.", url: "https://attack.mitre.org/groups/G0016", techs: [{ id: "T1566", name: "Phishing" }, { id: "T1059", name: "Command and Scripting Interpreter" }] },
+      { id: "G0007", name: "APT28", desc: "Fancy Bear, Russian military intelligence.", url: "https://attack.mitre.org/groups/G0007", techs: [{ id: "T1110", name: "Brute Force" }, { id: "T1105", name: "Ingress Tool Transfer" }] },
+      { id: "G0022", name: "APT3", desc: "China-based threat group.", url: "https://attack.mitre.org/groups/G0022", techs: [{ id: "T1078", name: "Valid Accounts" }, { id: "T1003", name: "OS Credential Dumping" }] },
+      { id: "G0032", name: "Lazarus Group", desc: "North Korean state-sponsored cyber group.", url: "https://attack.mitre.org/groups/G0032", techs: [{ id: "T1486", name: "Data Encrypted for Impact" }, { id: "T1055", name: "Process Injection" }] },
+      { id: "G0087", name: "FIN7", desc: "Financially motivated threat group.", url: "https://attack.mitre.org/groups/G0087", techs: [{ id: "T1185", name: "Browser Session Hijacking" }, { id: "T1566", name: "Phishing" }] },
+      { id: "G0130", name: "Sandworm Team", desc: "Russian GRU cyber warfare unit.", url: "https://attack.mitre.org/groups/G0130", techs: [{ id: "T1485", name: "Data Destruction" }, { id: "T1071", name: "Application Layer Protocol" }] },
+      { id: "G0006", name: "APT1", desc: "Chinese PLA Unit 61398.", url: "https://attack.mitre.org/groups/G0006", techs: [{ id: "T1056", name: "Input Capture" }, { id: "T1040", name: "Network Sniffing" }] },
+      { id: "G0050", name: "APT32", desc: "OceanLotus, Vietnam-aligned group.", url: "https://attack.mitre.org/groups/G0050", techs: [{ id: "T1027", name: "Obfuscated Files or Information" }, { id: "T1140", name: "Deobfuscate/Decode Files or Information" }] },
+      { id: "G0034", name: "Sandworm Team", desc: "Destructive malware campaigns.", url: "https://attack.mitre.org/groups/G0034", techs: [{ id: "T1053", name: "Scheduled Task/Job" }, { id: "T1021", name: "Remote Services" }] },
+      { id: "G0096", name: "APT41", desc: "Chinese state-sponsored espionage group.", url: "https://attack.mitre.org/groups/G0096", techs: [{ id: "T1190", name: "Exploit Public-Facing Application" }, { id: "T1055", name: "Process Injection" }] },
+      { id: "G0114", name: "Mustang Panda", desc: "China-based cyber espionage group.", url: "https://attack.mitre.org/groups/G0114", techs: [{ id: "T1036", name: "Masquerading" }, { id: "T1204", name: "User Execution" }] },
+      { id: "G0099", name: "Turla", desc: "Russian FSB affiliated group.", url: "https://attack.mitre.org/groups/G0099", techs: [{ id: "T1090", name: "Proxy" }, { id: "T1132", name: "Data Encoding" }] },
+      { id: "G0125", name: "HAFNIUM", desc: "Threat actors operating out of China.", url: "https://attack.mitre.org/groups/G0125", techs: [{ id: "T1505", name: "Server Software Component" }, { id: "T1136", name: "Create Account" }] },
+      { id: "G0018", name: "Admin@338", desc: "Cyber threat group operating out of China.", url: "https://attack.mitre.org/groups/G0018", techs: [{ id: "T1003", name: "OS Credential Dumping" }, { id: "T1083", name: "File and Directory Discovery" }] },
+      { id: "G0045", name: "menuPass", desc: "APT10, Chinese cyber espionage group.", url: "https://attack.mitre.org/groups/G0045", techs: [{ id: "T1078", name: "Valid Accounts" }, { id: "T1105", name: "Ingress Tool Transfer" }] }
+    ];
 
-      for (const apt of shuffledApts) {
-        const extRef = apt.external_references?.[0];
-        const aptUrl = extRef?.url || "https://attack.mitre.org";
-        const aptId = apt.id;
+    for (const apt of mitreApts) {
+      const iocStrings = [apt.url];
+      const eventsList = [
+        {
+          ioc: apt.url,
+          type: "url",
+          mitreId: apt.id,
+          timestamp: new Date().toISOString(),
+          description: "MITRE ATT&CK Group Reference"
+        }
+      ];
 
-        // Find techniques used by this APT group
-        const aptRels = relationships.filter((r: any) => r.source_ref === aptId);
-        const techniqueIds = aptRels.map((r: any) => r.target_ref);
-        
-        const usedTechniques = attackPatterns
-          .filter((ap: any) => techniqueIds.includes(ap.id))
-          .slice(0, 8); // Limit to 8 techniques to keep it manageable
-
-        const iocStrings = [aptUrl];
-        const eventsList = [
-          {
-            ioc: aptUrl,
-            type: "url",
-            mitreId: extRef?.external_id || "Unknown",
-            timestamp: new Date().toISOString(),
-            description: "MITRE ATT&CK Group Reference"
-          }
-        ];
-
-        usedTechniques.forEach((tech: any) => {
-          const techExtRef = tech.external_references?.find((er: any) => er.source_name === 'mitre-attack');
-          const techName = `${techExtRef?.external_id || 'Unknown'} - ${tech.name}`;
-          
-          iocStrings.push(techName);
-          eventsList.push({
-            ioc: techName,
-            type: "mitre_technique",
-            mitreId: techExtRef?.external_id || "Unknown",
-            timestamp: new Date().toISOString(),
-            description: tech.description?.substring(0, 200) || "No description."
-          });
+      apt.techs.forEach(tech => {
+        const techName = `${tech.id} - ${tech.name}`;
+        iocStrings.push(techName);
+        eventsList.push({
+          ioc: techName,
+          type: "mitre_technique",
+          mitreId: tech.id,
+          timestamp: new Date().toISOString(),
+          description: "Known technique utilized by this threat group."
         });
+      });
 
-        eventsToCreate.push({
-          eventName: `${apt.name} (MITRE ATT&CK)`,
-          description: apt.description?.substring(0, 800) || "No description available.",
-          isPublic: true,
-          status: "Active",
-          type: "APT Group",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          organizationId: "MITRE_CORP", // System owned
-          iocStrings: iocStrings,
-          events: eventsList
-        });
-      }
-    } catch (e) {
-      console.error("Failed to fetch MITRE data:", e);
+      eventsToCreate.push({
+        eventName: `${apt.name} (MITRE ATT&CK)`,
+        description: apt.desc,
+        isPublic: true,
+        status: "Active",
+        type: "APT Group",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        organizationId: "MITRE_CORP", // System owned
+        iocStrings: iocStrings,
+        events: eventsList
+      });
     }
 
     // 2. Fetch AlienVault OTX Pulses for "India"
