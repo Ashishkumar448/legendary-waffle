@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, doc, getDoc } from "firebase/firestore";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Globe, Shield, PlusCircle, Search, Building, ListFilter, RefreshCw } from "lucide-react";
 
-export default function EventsPage() {
+function EventsFeed() {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -182,5 +182,13 @@ export default function EventsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function EventsPage() {
+  return (
+    <Suspense fallback={<div className="text-zinc-500 py-10">Loading events...</div>}>
+      <EventsFeed />
+    </Suspense>
   );
 }
