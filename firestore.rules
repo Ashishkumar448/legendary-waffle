@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to verify authentication
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to get the current user's organization ID
+    function getUserOrg() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.organizationId;
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      // Users can read any profile (needed to display member names in UI)
+      allow read: if isAuthenticated();
+      // Users can only create or update their own user document
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if false;
+
+      // History subcollection (Written exclusively by Node.js Admin API)
+      match /history/{docId} {
+        allow read: if isAuthenticated() && request.auth.uid == userId;
+        allow write: if false; 
+      }
+    }
+
+    // 2. Organizations Collection
+    match /organizations/{orgId} {
+      // Any authenticated user can read organizations (needed for UI lists)
+      allow read: if isAuthenticated();
+      // Any authenticated user can create an org (happens during registration)
+      allow create: if isAuthenticated();
+      // Only the owner of the organization can update its settings
+      allow update: if isAuthenticated() && request.auth.uid == resource.data.ownerId;
+      allow delete: if false;
+    }
+
+    // 3. Threat Events (Campaigns) Collection
+    match /threatEvents/{eventId} {
+      // Read: Allowed if the event is public OR if the user belongs to the owning organization
+      allow read: if isAuthenticated() && (
+        resource.data.isPublic == true || 
+        resource.data.organizationId == getUserOrg()
+      );
+      // Create: User can only create an event assigned to their own organization
+      allow create: if isAuthenticated() && request.resource.data.organizationId == getUserOrg();
+      // Update: User can only update (e.g. add IOCs to) an event if they belong to the owning organization
+      allow update: if isAuthenticated() && resource.data.organizationId == getUserOrg();
+      allow delete: if isAuthenticated() && resource.data.organizationId == getUserOrg();
+    }
+
+    // 4. Contributions Collection
+    match /contributions/{contribId} {
+      // Read: Allowed if the user's org is the target OR if the user is the original contributor
+      allow read: if isAuthenticated() && (
+        resource.data.targetOrganizationId == getUserOrg() ||
+        resource.data.contributorUserId == request.auth.uid
+      );
+      // Create: User can propose an IOC if they correctly identify their own organization
+      allow create: if isAuthenticated() && request.resource.data.contributorOrganizationId == getUserOrg();
+      // Update: Only the target organization can update (approve/reject) the contribution
+      allow update: if isAuthenticated() && resource.data.targetOrganizationId == getUserOrg();
+      allow delete: if false;
+    }
+
+    // 5. Invites Collection
+    match /invites/{inviteId} {
+      // Unauthenticated users need to be able to read this collection to verify their invite codes on the login page
+      allow read: if true;
+      // Only authenticated users can create an invite for their own organization
+      allow create: if isAuthenticated() && request.resource.data.organizationId == getUserOrg();
+      allow update, delete: if false;
+    }
+
+    // 6. Global IOCs (Enrichment Cache)
+    match /global_iocs/{docId} {
+      // Anyone can read enriched IOCs for global search
+      allow read: if isAuthenticated();
+      // Writes are strictly reserved for the Node.js Admin API (`/api/enrich`)
+      allow write: if false;
+    }
+
+    // 6. Automated Ingestion Collections
+    match /phishing_reports/{docId} {
+      // Reserved for IMAP worker via Firebase Admin SDK
+      allow read, write: if false; 
+    }
+
+    match /siem_alerts/{docId} {
+      // Reserved for SIEM Webhook via Firebase Admin SDK
+      allow read, write: if false; 
+    }
+  }
+}

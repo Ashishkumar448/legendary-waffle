@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# IOCAG Web (Threat Intelligence Center)
 
-## Getting Started
+IOCAG Web is a modern Next.js application designed to streamline the gathering, enrichment, and analysis of Indicators of Compromise (IOCs). Built with React, Tailwind CSS, and Firebase, it provides analysts with a unified dashboard to interact with multiple OSINT APIs.
 
-First, run the development server:
+## Supported Features (Free Tier Compatible)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+The following features have been implemented and are fully compatible with free tier infrastructure (Firebase Spark Plan, Free API limits, and Vercel/Next.js limits):
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Core Enrichment
+1. **Manual IOC Submission:** Submit domains, IPs, hashes, or URLs for deep enrichment via VirusTotal, URLhaus, MalwareBazaar, AlienVault OTX, and AbuseIPDB.
+2. **Bulk Upload:** Upload CSV or JSON files to enrich multiple IOCs (sequential processing to respect API rate limits).
+3. **Phishing Email Forwarding:** API endpoint (`/api/email-sync`) that uses IMAP to poll a dedicated Gmail inbox, parsing forwarded emails for URLs and storing them in the DB.
+4. **SIEM / SOAR Webhook Push:** Dedicated API endpoint (`/api/webhook/siem`) to ingest alerts from your SIEM.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Organizations & Collaboration (Phase 2)
+5. **Organization Multi-Tenancy:** Users belong to an Organization, keeping private Threat Events scoped and isolated.
+6. **Threat Events (Campaigns):** Analysts can create Threat Events (e.g., APT campaigns) and upload IOCs directly into them rather than dumping them loosely.
+7. **Global Events Feed:** Real-time dashboard showing publicly shared Threat Events and MITRE tagged campaigns.
+8. **Cross-Organization Contributions:** Analysts from Org A can propose IOC additions to Threat Events owned by Org B. Org B admins can review and approve/reject these inside their Contributions Inbox.
+9. **Live Threat Map:** Global real-time visualization of cyber attacks.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Analysis
+10. **Global Search:** Query previously analyzed IOCs stored in Firestore.
+11. **Graph Investigation:** Interactive node-based visualization of relationships between IOCs.
+12. **Attack Timeline Reconstruction:** Chronological view of IOC observations.
+13. **"What-If" Sandbox:** Simulate relationships without polluting production feeds.
 
-## Learn More
+## Excluded Features
 
-To learn more about Next.js, take a look at the following resources:
+The following features from the original specification were **omitted** as they require paid infrastructure, complex background workers, or exceed serverless capabilities:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Malware Sample Upload & Detonation:** Requires an expensive live sandbox environment (e.g., Cuckoo or Any.Run commercial APIs).
+- **Automated Watchlist / Alerting:** Continuous background polling and alerting requires Firebase Cloud Functions (only available on the paid Blaze plan) or dedicated cron servers.
+- **Browser Extension w/ Screenshots:** Rendering screenshots of malicious domains requires headless Chrome environments, which exceed free serverless function size and timeout limits.
+- **Honeypot Infrastructure:** Requires maintaining live VM honeypots to capture C2 traffic.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Setup Instructions
 
-## Deploy on Vercel
+1. **Clone & Install:**
+   ```bash
+   npm install
+   ```
+2. **Configure Environment:**
+   Duplicate the provided `.env` structure and fill in your Firebase API keys and Threat Intel (VirusTotal, etc.) API keys.
+3. **Run Development Server:**
+   ```bash
+   npm run dev
+   ```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Tech Stack
+- Next.js (App Router, TypeScript)
+- Tailwind CSS & Lucide Icons
+- Firebase (Auth, Firestore)
+- Firebase Admin (Server-side verification and DB operations)
+- imap-simple & mailparser (Email ingestion)
