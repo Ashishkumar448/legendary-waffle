@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useRef } from "react";
 import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
 import dynamic from "next/dynamic";
-import { Network, Loader2, MousePointerClick } from "lucide-react";
+import { Network, Loader2, MousePointerClick, ZoomIn, ZoomOut, Maximize, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, RotateCw } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 
@@ -15,9 +15,18 @@ const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), {
 
 export default function GraphPage() {
   const router = useRouter();
-  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+  const [graphData, setGraphData] = useState<{ nodes: any[], links: any[] }>({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [rotation, setRotation] = useState(0);
+  
+  // Search and Highlight State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [highlightNodes, setHighlightNodes] = useState<Set<string>>(new Set<string>());
+  const [highlightLinks, setHighlightLinks] = useState<Set<any>>(new Set<any>());
+  const [searchedNode, setSearchedNode] = useState<any>(null);
+
+  const fgRef = useRef<any>(null);
 
   useEffect(() => {
     // Resize graph to fit container dynamically
@@ -30,6 +39,8 @@ export default function GraphPage() {
     
     // Initial size
     setTimeout(updateDimensions, 100);
+    // Extra safety update after rendering
+    setTimeout(updateDimensions, 1000);
     
     window.addEventListener("resize", updateDimensions);
     return () => window.removeEventListener("resize", updateDimensions);
@@ -115,8 +126,14 @@ export default function GraphPage() {
         });
 
         nodes.forEach(node => {
-          // Base size + bonus for connections
-          node.val = (node.type === "campaign" ? 8 : 3) + Math.min((degreeCount[node.id] || 0) * 1.5, 30);
+          const degree = degreeCount[node.id] || 0;
+          if (node.type === "campaign") {
+            // Drastically smaller red nodes
+            node.val = Math.max(3, Math.min(8, 3 + Math.log2(degree + 1)));
+          } else {
+            // Smaller blue nodes
+            node.val = Math.max(1.5, Math.min(4, 1.5 + Math.log2(degree + 1) * 0.5));
+          }
         });
 
         setGraphData({ nodes, links } as any);
@@ -130,7 +147,93 @@ export default function GraphPage() {
     fetchData();
   }, []);
 
-  if (loading) return <div className="text-zinc-500">Loading correlation web...</div>;
+  // Handle Search Highlighting
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setHighlightNodes(new Set());
+      setHighlightLinks(new Set());
+      setSearchedNode(null);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const matchedNode = graphData.nodes.find((n: any) => 
+      String(n.id).toLowerCase().includes(query) || (n.name && String(n.name).toLowerCase().includes(query))
+    );
+
+    if (matchedNode) {
+      setSearchedNode(matchedNode);
+      const newHighlightNodes = new Set<string>();
+      const newHighlightLinks = new Set<any>();
+
+      newHighlightNodes.add(matchedNode.id);
+
+      graphData.links.forEach((link: any) => {
+        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+
+        if (sourceId === matchedNode.id || targetId === matchedNode.id) {
+          newHighlightLinks.add(link);
+          newHighlightNodes.add(sourceId);
+          newHighlightNodes.add(targetId);
+        }
+      });
+
+      setHighlightNodes(newHighlightNodes);
+      setHighlightLinks(newHighlightLinks);
+      
+      // Auto center to searched node
+      if (fgRef.current && matchedNode.x !== undefined && matchedNode.y !== undefined) {
+        // fgRef.current.centerAt(matchedNode.x, matchedNode.y, 1000);
+      }
+    } else {
+      setHighlightNodes(new Set());
+      setHighlightLinks(new Set());
+      setSearchedNode(null);
+    }
+  }, [searchQuery, graphData]);
+
+  // Configure custom physics forces when graph data loads
+  useEffect(() => {
+    if (fgRef.current && !loading) {
+      // Strong repulsion to spread nodes out fully across the wide screen
+      fgRef.current.d3Force('charge').strength(-300);
+      // Longer links to allow the graph to expand outward
+      fgRef.current.d3Force('link').distance(70);
+      
+      // Gentle gravity to keep isolated nodes from floating into the abyss
+      fgRef.current.d3Force('x', fgRef.current.d3Force('x') || (window as any).d3?.forceX(0).strength(0.01) || null);
+      fgRef.current.d3Force('y', fgRef.current.d3Force('y') || (window as any).d3?.forceY(0).strength(0.01) || null);
+    }
+  }, [graphData, loading]);
+
+  // Graph Controls Functions
+  const handleZoomIn = () => {
+    if (fgRef.current) fgRef.current.zoom(fgRef.current.zoom() * 1.5, 400);
+  };
+  const handleZoomOut = () => {
+    if (fgRef.current) fgRef.current.zoom(fgRef.current.zoom() / 1.5, 400);
+  };
+  const handleReset = () => {
+    if (fgRef.current) fgRef.current.zoomToFit(500, 50);
+    setRotation(0);
+  };
+  const handlePan = (dx: number, dy: number) => {
+    if (fgRef.current) {
+      // Adjust pan direction if rotated to keep controls intuitive
+      const rad = (rotation * Math.PI) / 180;
+      const adjustedDx = dx * Math.cos(rad) + dy * Math.sin(rad);
+      const adjustedDy = -dx * Math.sin(rad) + dy * Math.cos(rad);
+      
+      const currentCenter = fgRef.current.centerAt();
+      fgRef.current.centerAt(currentCenter.x + adjustedDx, currentCenter.y + adjustedDy, 400);
+    }
+  };
+  const handleRotate = () => {
+    setRotation(prev => (prev + 90) % 360);
+  };
+
+  if (loading) return <div className="text-zinc-500 flex justify-center py-20">Loading correlation web...</div>;
 
   return (
     <div className="h-full flex flex-col space-y-4">
@@ -151,21 +254,32 @@ export default function GraphPage() {
 
       <div 
         id="graph-container" 
-        className="flex-1 w-full bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl relative"
+        className="w-full bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl relative"
+        style={{ height: 'calc(100vh - 180px)', minHeight: '600px' }}
       >
-        <ForceGraph2D
-          width={dimensions.width}
+        <div style={{ transform: `rotate(${rotation}deg)`, transition: 'transform 0.5s ease', width: '100%', height: '100%' }}>
+          <ForceGraph2D
+            ref={fgRef}
+            width={dimensions.width}
           height={dimensions.height}
           graphData={graphData}
           nodeLabel="name" // Native tooltip on hover
-          nodeColor={(node: any) => node.type === "campaign" ? "#ef4444" : "#3b82f6"}
-          linkColor={() => "#27272a"} // zinc-800
-          linkWidth={1}
-          nodeRelSize={4}
+          linkColor={(link: any) => {
+            if (highlightLinks.size === 0) return "#27272a"; // default zinc-800
+            return highlightLinks.has(link) ? "#fbbf24" : "rgba(100, 100, 100, 0.05)";
+          }}
+          linkWidth={(link: any) => highlightLinks.has(link) ? 2 : 1}
           backgroundColor="#09090b" // zinc-950
           enableNodeDrag={true}
           enableZoomInteraction={true}
           enablePanInteraction={true}
+          d3VelocityDecay={0.3} // Better drag feel
+          cooldownTicks={100} // Stabilizes faster
+          onEngineStop={() => {
+            if (fgRef.current) {
+              fgRef.current.zoomToFit(600, 50); // Auto-center and fit to screen
+            }
+          }}
           onNodeClick={(node: any) => {
             if (node.type === "campaign") {
               router.push(`/dashboard/events/${node.id}`);
@@ -190,21 +304,53 @@ export default function GraphPage() {
             // Only draw text if zoomed in enough
             const shouldDrawText = globalScale > 0.8;
 
-            ctx.fillStyle = node.type === "campaign" ? "#ef4444" : "#3b82f6";
+            const isHighlighted = highlightNodes.size === 0 || highlightNodes.has(node.id);
+            const isSearched = searchedNode && searchedNode.id === node.id;
+            
+            // Special highlight: if an IOC was searched, highlight the campaigns connected to it in orange
+            const isConnectedToSearchedIOC = searchedNode && searchedNode.type !== "campaign" && node.type === "campaign" && highlightNodes.has(node.id);
+
+            // Determine color
+            let color = node.type === "campaign" ? "#ef4444" : "#3b82f6";
+            if (highlightNodes.size > 0 && !highlightNodes.has(node.id)) {
+              color = "rgba(100, 100, 100, 0.1)"; // Faded out
+            } else if (isSearched) {
+              color = "#fbbf24"; // Bright Amber for the exact match
+            } else if (isConnectedToSearchedIOC) {
+              color = "#f97316"; // Bright Orange for the special campaign highlight
+            }
+
+            ctx.fillStyle = color;
             ctx.beginPath();
             ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
             ctx.fill();
 
-            if (shouldDrawText) {
+            // Glow effect
+            if (isSearched || isConnectedToSearchedIOC) {
+              ctx.strokeStyle = color;
+              ctx.lineWidth = 4 / globalScale;
+              ctx.stroke();
+            }
+
+            if (shouldDrawText && isHighlighted) {
               ctx.font = `${fontSize}px Sans-Serif`;
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
-              ctx.fillStyle = "#a1a1aa"; // zinc-400
+              ctx.fillStyle = (isSearched || isConnectedToSearchedIOC) ? "#fbbf24" : "#a1a1aa";
               ctx.fillText(label, node.x, node.y + node.val + (fontSize * 1.5));
             }
           }}
+          nodePointerAreaPaint={(node: any, color, ctx) => {
+            // Perfectly aligns the physical drag/click hitbox with our custom drawn circle
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
+            ctx.fill();
+          }}
         />
+        </div>
         
+        {/* Legend */}
         <div className="absolute top-4 left-4 bg-zinc-900/90 backdrop-blur border border-zinc-800 p-4 rounded-xl text-sm shadow-lg pointer-events-none">
           <h3 className="font-semibold text-zinc-100 mb-2">Legend</h3>
           <div className="flex items-center gap-2 text-zinc-400 mb-1">
@@ -214,6 +360,66 @@ export default function GraphPage() {
             <span className="w-3 h-3 rounded-full bg-blue-500"></span> Indicator (IOC)
           </div>
         </div>
+
+        {/* Search Bar */}
+        <div className="absolute top-4 right-4 bg-zinc-900/90 backdrop-blur border border-zinc-800 p-3 rounded-xl shadow-lg z-10 w-72">
+          <input 
+            type="text" 
+            placeholder="Search IOC or Event..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full bg-zinc-800 text-zinc-100 placeholder-zinc-500 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+          />
+        </div>
+
+        {/* Graph Controls Overlay */}
+        <div className="absolute bottom-6 right-6 flex items-end gap-4">
+          
+          {/* Pan Controls */}
+          <div className="bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-xl p-2 shadow-lg grid grid-cols-3 grid-rows-3 gap-1 w-24 h-24">
+            <div className="col-start-2">
+              <button onClick={() => handlePan(0, -150)} className="w-full h-full flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md transition-colors" title="Pan Up">
+                <ChevronUp className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="col-start-1 row-start-2">
+              <button onClick={() => handlePan(-150, 0)} className="w-full h-full flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md transition-colors" title="Pan Left">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="col-start-2 row-start-2 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-zinc-700"></div>
+            </div>
+            <div className="col-start-3 row-start-2">
+              <button onClick={() => handlePan(150, 0)} className="w-full h-full flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md transition-colors" title="Pan Right">
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="col-start-2 row-start-3">
+              <button onClick={() => handlePan(0, 150)} className="w-full h-full flex items-center justify-center bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-md transition-colors" title="Pan Down">
+                <ChevronDown className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Action Controls */}
+          <div className="bg-zinc-900/90 backdrop-blur border border-zinc-800 rounded-xl flex flex-col overflow-hidden shadow-lg">
+            <button onClick={handleZoomIn} className="p-3 hover:bg-zinc-800 text-zinc-300 transition-colors border-b border-zinc-800" title="Zoom In">
+              <ZoomIn className="w-5 h-5" />
+            </button>
+            <button onClick={handleReset} className="p-3 hover:bg-zinc-800 text-blue-400 transition-colors border-b border-zinc-800" title="Reset & Fit to Screen">
+              <Maximize className="w-5 h-5" />
+            </button>
+            <button onClick={handleRotate} className="p-3 hover:bg-zinc-800 text-zinc-300 transition-colors border-b border-zinc-800" title="Rotate 90°">
+              <RotateCw className="w-5 h-5" />
+            </button>
+            <button onClick={handleZoomOut} className="p-3 hover:bg-zinc-800 text-zinc-300 transition-colors" title="Zoom Out">
+              <ZoomOut className="w-5 h-5" />
+            </button>
+          </div>
+          
+        </div>
+
       </div>
     </div>
   );

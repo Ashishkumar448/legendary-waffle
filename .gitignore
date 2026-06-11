@@ -44,3 +44,6 @@ next-env.d.ts
 firebase-service-account.json
 .firebase/
 .firebaserc
+scripts/seed_org_events.mjs
+scripts/add_common_iocs.mjs  
+ 

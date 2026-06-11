@@ -41,14 +41,11 @@ export async function GET(req: Request) {
     const batch = db.batch();
 
     for (const item of messages) {
-      const allParts = imaps.getParts(item.attributes.struct as any);
-      const textPart = allParts.find((p: any) => p.partID === '1' || p.partID === 'TEXT');
-      
       let rawEmail = '';
-      const part = item.parts.find((p: any) => p.which === 'TEXT');
+      const part = item.parts?.find((p: any) => p.which === 'TEXT');
       if (part) {
         rawEmail = part.body;
-      } else {
+      } else if (item.parts && item.parts.length > 0) {
         rawEmail = item.parts[0].body;
       }
 

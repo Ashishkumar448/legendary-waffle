@@ -9,6 +9,7 @@ import Link from "next/link";
 
 function AddEventForm() {
   const [eventName, setEventName] = useState("");
+  const [description, setDescription] = useState("");
   const [type, setType] = useState("network");
   const [status, setStatus] = useState("Active");
   const [isPublic, setIsPublic] = useState(false);
@@ -28,6 +29,7 @@ function AddEventForm() {
 
       await addDoc(collection(db, "threatEvents"), {
         eventName,
+        description,
         type,
         status,
         isPublic, // If true, appears in Global Events feed for other orgs
@@ -69,6 +71,17 @@ function AddEventForm() {
             onChange={(e) => setEventName(e.target.value)}
             required
             className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 text-white"
+          />
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2 block">Description / Notes</label>
+          <textarea 
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={4}
+            placeholder="Provide context about this threat campaign..."
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg py-2.5 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 text-white resize-none"
           />
         </div>
 

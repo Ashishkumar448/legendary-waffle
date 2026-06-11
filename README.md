@@ -19,11 +19,17 @@ The following features have been implemented and are fully compatible with free 
 8. **Cross-Organization Contributions:** Analysts from Org A can propose IOC additions to Threat Events owned by Org B. Org B admins can review and approve/reject these inside their Contributions Inbox.
 9. **Live Threat Map:** Global real-time visualization of cyber attacks.
 
-### Analysis
-10. **Global Search:** Query previously analyzed IOCs stored in Firestore.
-11. **Graph Investigation:** Interactive node-based visualization of relationships between IOCs.
-12. **Attack Timeline Reconstruction:** Chronological view of IOC observations.
-13. **"What-If" Sandbox:** Simulate relationships without polluting production feeds.
+### Analysis & Visualization
+10. **Graph Investigation (Enhanced):** Highly advanced, interactive node-based correlation web.
+    - **Physics Engine:** Custom D3 force logic automatically centers disconnected campaigns and spreads massive highly-connected datasets without overlapping.
+    - **Interactive Controls:** Built-in floating UI for directional Panning, precise Zooming, Auto-Fit centering, and 90° Canvas Rotation.
+    - **Search & Highlight:** Real-time search bar that illuminates queried IOCs (in amber), their connected Campaigns (in orange), and fades out irrelevant data for forensic focus.
+11. **Attack Timeline Reconstruction:** Chronological view of IOC observations.
+12. **"What-If" Sandbox:** Simulate relationships without polluting production feeds.
+
+### Data Inputs & Details
+13. **Contextual Enriched Events:** Campaigns and IOCs now support detailed Context notes, and feature interactive Modals for copying intelligence and warning of cross-campaign IOC correlations.
+14. **Robust Email Ingestion:** IMAP processor correctly parses and ingests raw or multipart text emails directly into the DB.
 
 ## Excluded Features
 
