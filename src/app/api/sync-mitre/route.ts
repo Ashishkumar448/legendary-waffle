@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getFirestore } from 'firebase-admin/firestore';
-import '@/lib/firebase-admin'; // Ensure admin is initialized
+import { adminDb as db } from '@/lib/firebase-admin';
 
 export async function POST(req: Request) {
   try {
-    const db = getFirestore();
+    if (!db) {
+      return NextResponse.json({ error: "Firebase Admin is not configured. Missing FIREBASE_PRIVATE_KEY in Vercel." }, { status: 500 });
+    }
+
     const eventsToCreate = [];
 
     // 0. Clean up old synced events to prevent duplicates
