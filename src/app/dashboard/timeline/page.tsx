@@ -248,9 +248,10 @@ export default function TimelinePage() {
                   <BarChart 
                     data={filteredHistogramData} 
                     margin={{ top: 10, right: 10, left: -20, bottom: 20 }}
-                    onClick={(state) => {
+                    onClick={(state: any) => {
                       if (state && state.activeLabel) {
-                        setSelectedBucket(state.activeLabel === selectedBucket ? null : state.activeLabel);
+                        const labelStr = String(state.activeLabel);
+                        setSelectedBucket(labelStr === selectedBucket ? null : labelStr);
                       }
                     }}
                     style={{ cursor: 'pointer' }}
