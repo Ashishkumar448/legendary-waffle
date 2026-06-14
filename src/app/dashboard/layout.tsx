@@ -18,7 +18,9 @@ import {
   Building,
   Globe,
   Inbox,
-  Activity
+  Activity,
+  Server,
+  Network
 } from "lucide-react";
 
 function SidebarNav({ 
@@ -143,8 +145,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Global Search", href: "/dashboard/search", icon: Search },
     { name: "Live Threat Map", href: "/dashboard/live-map", icon: Activity },
     { name: "Graph Investigation", href: "/dashboard/graph", icon: Share2 },
+    { name: "Pivot Explorer", href: "/dashboard/pivot", icon: Network },
     { name: "Timeline", href: "/dashboard/timeline", icon: Clock },
     { name: "What-If Sandbox", href: "/dashboard/what-if", icon: HelpCircle },
+    { name: "SIEM & Active Defense", href: "/dashboard/siem", icon: Server },
   ];
 
   if (loading) {

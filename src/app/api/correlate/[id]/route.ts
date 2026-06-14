@@ -59,6 +59,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       correlatedEvents: Array.from(correlatedEventsMap.values()) 
     });
   } catch (error: any) {
+    if (error.message && error.message.includes("Could not load the default credentials")) {
+      console.warn("Firebase Admin credentials not configured locally. Skipping correlation fetch.");
+      return NextResponse.json({ success: true, correlatedEvents: [] });
+    }
     console.error('Error correlating events:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

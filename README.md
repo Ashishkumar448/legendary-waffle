@@ -25,11 +25,16 @@ The following features have been implemented and are fully compatible with free 
     - **Interactive Controls:** Built-in floating UI for directional Panning, precise Zooming, Auto-Fit centering, and 90° Canvas Rotation.
     - **Search & Highlight:** Real-time search bar that illuminates queried IOCs (in amber), their connected Campaigns (in orange), and fades out irrelevant data for forensic focus.
 11. **Attack Timeline Reconstruction:** Chronological view of IOC observations.
-12. **"What-If" Sandbox:** Simulate relationships without polluting production feeds.
+12. **"What-If" Contagion Sandbox:** An interactive playground to simulate lateral movement and blast radius. Select a "Patient Zero" and watch a mathematical contagion algorithm probabilistically infect connected infrastructure.
 
 ### Data Inputs & Details
 13. **Contextual Enriched Events:** Campaigns and IOCs now support detailed Context notes, and feature interactive Modals for copying intelligence and warning of cross-campaign IOC correlations.
-14. **Robust Email Ingestion:** IMAP processor correctly parses and ingests raw or multipart text emails directly into the DB.
+32. **Robust Email Ingestion:** IMAP processor correctly parses and ingests raw or multipart text emails directly into the DB.
+33. **Lightning Global Search:** An instantaneous, client-side fuzzy search engine (powered by Fuse.js) that handles typos and instantly searches across thousands of IOCs and Campaigns without backend delays.
+34. **Active Defense SIEM Dashboard:** A mock Security Operations Center (SOC) view featuring live metrics, a simulated firewall syslog terminal, and a real-time blocklist ledger tracking every IOC "Pushed to Defense".
+35. **Shodan Integration:** Deep infrastructure scanning for IPs including open ports, banners, and vulnerabilities.
+36. **MITRE ATT&CK Auto-Tagging:** AlienVault OTX integration extracts and automatically tags IOCs with official MITRE technique badges.
+37. **STIX 2.1 & CSV Exports:** Pure client-side compute engine to instantly export threat campaigns into STIX 2.1 JSON bundles or flat CSVs.
 
 ## Excluded Features
 

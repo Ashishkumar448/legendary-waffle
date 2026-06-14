@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, arrayUnion } from "firebase/firestore";
-import { ShieldCheck, Plus, Link as LinkIcon, TriangleAlert, Activity, ArrowLeft, X } from "lucide-react";
+import { doc, getDoc, updateDoc, arrayUnion, collection, addDoc } from "firebase/firestore";
+import { ShieldCheck, Plus, Link as LinkIcon, TriangleAlert, Activity, ArrowLeft, X, ShieldAlert, Download, Bot, Radar } from "lucide-react";
 import Link from "next/link";
 
 export default function EventDetailsPage() {
@@ -23,6 +23,158 @@ export default function EventDetailsPage() {
   
   // Modal State
   const [selectedIoc, setSelectedIoc] = useState<any>(null);
+  const [pushing, setPushing] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+
+  // AI State
+  const [aiReport, setAiReport] = useState<string | null>(null);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [attribution, setAttribution] = useState<any[] | null>(null);
+  const [generatingAttribution, setGeneratingAttribution] = useState(false);
+
+  const handleGenerateReport = async () => {
+    if (!event || !event.events) return;
+    setGeneratingReport(true);
+    try {
+      const res = await fetch('/api/ai/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignName: event.eventName,
+          description: event.description,
+          iocs: event.events
+        })
+      });
+      const data = await res.json();
+      if (data.report) setAiReport(data.report);
+      else alert(data.error || "Failed to generate report");
+    } catch (e) {
+      console.error(e);
+      alert("Error generating report");
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  const handleGenerateAttribution = async () => {
+    if (!event || !event.events) return;
+    setGeneratingAttribution(true);
+    try {
+      const res = await fetch('/api/ai/attribution', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          campaignName: event.eventName,
+          iocs: event.events
+        })
+      });
+      const data = await res.json();
+      if (data.attribution) setAttribution(data.attribution);
+      else alert(data.error || "Failed to generate attribution");
+    } catch (e) {
+      console.error(e);
+      alert("Error generating attribution");
+    } finally {
+      setGeneratingAttribution(false);
+    }
+  };
+
+  const handleExport = (format: 'csv' | 'stix') => {
+    if (!event || !event.events) return;
+    
+    let content = '';
+    let filename = '';
+    let mimeType = '';
+
+    if (format === 'csv') {
+      const headers = ['IOC', 'Type', 'Description', 'Timestamp', 'MITRE Tags'];
+      const rows = event.events.map((ioc: any) => [
+        `"${ioc.ioc || ioc.value}"`,
+        `"${ioc.type}"`,
+        `"${(ioc.description || '').replace(/"/g, '""')}"`,
+        `"${ioc.timestamp}"`,
+        `"${(ioc.mitreTags || []).join(', ')}"`
+      ]);
+      content = [headers.join(','), ...rows.map((r: string[]) => r.join(','))].join('\n');
+      filename = `${event.eventName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.csv`;
+      mimeType = 'text/csv;charset=utf-8;';
+    } else if (format === 'stix') {
+      const stixObjects = event.events.map((ioc: any, idx: number) => ({
+        type: 'indicator',
+        spec_version: '2.1',
+        id: `indicator--${crypto.randomUUID ? crypto.randomUUID() : 'id-'+idx}`,
+        created: new Date(ioc.timestamp).toISOString(),
+        modified: new Date().toISOString(),
+        name: ioc.description || `Malicious ${ioc.type}`,
+        description: `Exported from IOCAG. MITRE Tags: ${(ioc.mitreTags || []).join(', ')}`,
+        pattern: ioc.type === 'ip' ? `[ipv4-addr:value = '${ioc.ioc || ioc.value}']` : 
+                 ioc.type === 'domain' ? `[domain-name:value = '${ioc.ioc || ioc.value}']` :
+                 `[file:hashes.'SHA-256' = '${ioc.ioc || ioc.value}']`,
+        pattern_type: 'stix',
+        valid_from: new Date(ioc.timestamp).toISOString()
+      }));
+
+      const bundle = {
+        type: 'bundle',
+        id: `bundle--${crypto.randomUUID ? crypto.randomUUID() : 'bndl-1'}`,
+        objects: [
+          {
+            type: 'grouping',
+            spec_version: '2.1',
+            id: `grouping--${crypto.randomUUID ? crypto.randomUUID() : 'grp-1'}`,
+            created: new Date().toISOString(),
+            modified: new Date().toISOString(),
+            name: event.eventName,
+            context: 'suspicious-activity',
+            object_refs: stixObjects.map((o: any) => o.id)
+          },
+          ...stixObjects
+        ]
+      };
+      
+      content = JSON.stringify(bundle, null, 2);
+      filename = `${event.eventName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_stix2.json`;
+      mimeType = 'application/json;charset=utf-8;';
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setExportMenuOpen(false);
+  };
+
+  const handlePushToDefense = async (ioc: any) => {
+    setPushing(true);
+    try {
+      // Simulate network delay
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      await addDoc(collection(db, "defense_pushes"), {
+        ioc: ioc.ioc || ioc.value,
+        type: ioc.type,
+        campaignId: id,
+        campaignName: event.eventName,
+        pushedBy: auth.currentUser?.uid,
+        organizationId: event.organizationId,
+        timestamp: new Date().toISOString(),
+        status: "Blocked",
+        destination: "SIEM Active Defense"
+      });
+
+      alert("✅ IOC successfully pushed to active defense perimeter!");
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error pushing IOC.");
+    } finally {
+      setPushing(false);
+    }
+  };
 
   // To check if the current user belongs to the org that owns this event
   const [isOwner, setIsOwner] = useState(false);
@@ -66,12 +218,38 @@ export default function EventDetailsPage() {
     if (!newIoc || !isOwner) return;
     setAdding(true);
     try {
+      // Fetch enrichment data to get MITRE tags
+      let extractedMitreTags: string[] = [];
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (token) {
+          const enrichRes = await fetch('/api/enrich', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ ioc: newIoc, type: iocType })
+          });
+          const enrichData = await enrichRes.json();
+          if (enrichData.results) {
+            const otxResult = enrichData.results.find((r: any) => r.source === 'AlienVault OTX');
+            if (otxResult && otxResult.mitreTags) {
+              extractedMitreTags = otxResult.mitreTags;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to auto-tag MITRE", e);
+      }
+
       const iocPayload = {
         ioc: newIoc,
         type: iocType,
         description: iocDescription || "Manually added IOC.",
         addedBy: auth.currentUser?.uid,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        mitreTags: extractedMitreTags
       };
       
       const eventRef = doc(db, "threatEvents", id as string);
@@ -116,14 +294,116 @@ export default function EventDetailsPage() {
             </div>
           )}
         </div>
-        {!isOwner && event.isPublic && (
-          <Link 
-            href={`/dashboard/events/${id}/contribute`}
-            className="bg-purple-600 hover:bg-purple-500 text-white font-medium py-2 px-4 rounded-lg text-sm transition-all flex items-center"
-          >
-            <Plus className="w-4 h-4 mr-2" /> Propose Contribution
-          </Link>
-        )}
+        <div className="flex gap-2 relative">
+          {!isOwner && event.isPublic && (
+            <Link 
+              href={`/dashboard/events/${id}/contribute`}
+              className="bg-purple-600 hover:bg-purple-500 text-white font-medium py-2 px-4 rounded-lg text-sm transition-all flex items-center"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Propose Contribution
+            </Link>
+          )}
+          <div className="relative">
+            <button 
+              onClick={() => setExportMenuOpen(!exportMenuOpen)}
+              className="bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-all flex items-center border border-zinc-700"
+            >
+              <Download className="w-4 h-4 mr-2" /> Export
+            </button>
+            {exportMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl z-50 overflow-hidden">
+                <button 
+                  onClick={() => handleExport('csv')}
+                  className="w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors"
+                >
+                  Export as CSV
+                </button>
+                <button 
+                  onClick={() => handleExport('stix')}
+                  className="w-full text-left px-4 py-3 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-white transition-colors border-t border-zinc-800"
+                >
+                  Export as STIX 2.1 (JSON)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* AI Intelligence Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* AI Threat Narrative */}
+        <div className="bg-zinc-900 border border-purple-500/30 rounded-2xl p-6 shadow-[0_0_15px_rgba(168,85,247,0.05)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <Bot className="w-24 h-24 text-purple-400" />
+          </div>
+          <h2 className="text-lg font-semibold text-purple-400 mb-2 flex items-center gap-2 relative z-10">
+            <Bot className="w-5 h-5" /> Executive Threat Narrative
+          </h2>
+          <p className="text-xs text-zinc-500 mb-4 relative z-10">Powered by LLaMA-3</p>
+          
+          {aiReport ? (
+            <div className="text-sm text-zinc-300 leading-relaxed space-y-4 relative z-10 whitespace-pre-wrap">
+              {aiReport}
+            </div>
+          ) : (
+            <div className="relative z-10">
+              <button 
+                onClick={handleGenerateReport}
+                disabled={generatingReport}
+                className="bg-purple-600 hover:bg-purple-500 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generatingReport ? (
+                  <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Generating...</span>
+                ) : "Generate Analyst Report"}
+              </button>
+              <p className="text-xs text-zinc-500 mt-3">Synthesizes campaign context and IOCs into a boardroom-ready summary.</p>
+            </div>
+          )}
+        </div>
+
+        {/* Threat Actor Fingerprinting */}
+        <div className="bg-zinc-900 border border-blue-500/30 rounded-2xl p-6 shadow-[0_0_15px_rgba(59,130,246,0.05)] relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-4 opacity-10">
+            <Radar className="w-24 h-24 text-blue-400" />
+          </div>
+          <h2 className="text-lg font-semibold text-blue-400 mb-2 flex items-center gap-2 relative z-10">
+            <Radar className="w-5 h-5" /> Attribution Fingerprinting
+          </h2>
+          <p className="text-xs text-zinc-500 mb-4 relative z-10">Heuristic TTP Clustering</p>
+          
+          {attribution ? (
+            <div className="space-y-4 relative z-10">
+              {attribution.map((attr, idx) => (
+                <div key={idx} className="bg-zinc-950 border border-zinc-800 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-bold text-white">{attr.actor}</span>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${attr.confidence > 60 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
+                      {attr.confidence}% Match
+                    </span>
+                  </div>
+                  <div className="w-full bg-zinc-800 rounded-full h-1.5 mb-3">
+                    <div className={`${attr.confidence > 60 ? 'bg-red-500' : 'bg-yellow-500'} h-1.5 rounded-full`} style={{ width: `${attr.confidence}%` }}></div>
+                  </div>
+                  <p className="text-xs text-zinc-400 leading-relaxed">{attr.evidence}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="relative z-10">
+              <button 
+                onClick={handleGenerateAttribution}
+                disabled={generatingAttribution}
+                className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {generatingAttribution ? (
+                  <span className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Correlating TTPs...</span>
+                ) : "Run Attribution Engine"}
+              </button>
+              <p className="text-xs text-zinc-500 mt-3">Clusters MITRE tags and infrastructure patterns against known APT profiles.</p>
+            </div>
+          )}
+        </div>
       </div>
 
       {isOwner && (
@@ -196,9 +476,21 @@ export default function EventDetailsPage() {
                             </span>
                           )}
                         </div>
-                        <div className="text-xs text-zinc-500 uppercase flex items-center gap-2 mt-1">
+                        <div className="text-xs text-zinc-500 uppercase flex flex-wrap items-center gap-2 mt-1">
                           <span className="bg-zinc-800 px-2 py-0.5 rounded text-[10px] text-zinc-300 font-bold tracking-wider">{ioc.type}</span>
                           {ioc.description && <span className="truncate max-w-xs">{ioc.description}</span>}
+                          {ioc.mitreTags && ioc.mitreTags.map((tag: string) => (
+                             <a 
+                               key={tag} 
+                               href={`https://attack.mitre.org/techniques/${tag.replace('.', '/')}`} 
+                               target="_blank" 
+                               rel="noopener noreferrer"
+                               onClick={(e) => e.stopPropagation()}
+                               className="bg-purple-900/40 hover:bg-purple-900/60 transition-colors text-purple-400 border border-purple-500/30 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider cursor-pointer"
+                             >
+                               {tag}
+                             </a>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -300,18 +592,27 @@ export default function EventDetailsPage() {
                 </div>
               )}
               
-              {(selectedIoc.type === 'url' || selectedIoc.type === 'mitre_technique') && (
-                <div>
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  onClick={() => handlePushToDefense(selectedIoc)}
+                  disabled={pushing}
+                  className="flex-1 flex items-center justify-center gap-2 bg-red-600 hover:bg-red-500 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-all shadow-[0_0_15px_rgba(220,38,38,0.3)] disabled:opacity-50"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  {pushing ? "Dispatching to SIEM..." : "Push to Active Defense"}
+                </button>
+                
+                {(selectedIoc.type === 'url' || selectedIoc.type === 'mitre_technique') && (
                   <a 
                     href={selectedIoc.type === 'mitre_technique' ? `https://attack.mitre.org/techniques/${(selectedIoc.mitreId || '').replace('.', '/')}` : (selectedIoc.ioc || selectedIoc.value)}
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="inline-flex w-full items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2 px-4 rounded-lg text-sm transition-colors"
+                    className="flex-1 inline-flex items-center justify-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium py-2.5 px-4 rounded-lg text-sm transition-colors"
                   >
                     <LinkIcon className="w-4 h-4" /> Open External Link
                   </a>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

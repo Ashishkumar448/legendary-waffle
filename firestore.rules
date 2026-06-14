@@ -93,5 +93,13 @@ service cloud.firestore {
       // Reserved for SIEM Webhook via Firebase Admin SDK
       allow read, write: if false; 
     }
+
+    // 7. Defense Pushes Collection (SIEM Active Defense)
+    match /defense_pushes/{docId} {
+      // Users can only read and create defense pushes scoped to their own organization
+      allow read: if isAuthenticated() && resource.data.organizationId == getUserOrg();
+      allow create: if isAuthenticated() && request.resource.data.organizationId == getUserOrg();
+      allow update, delete: if false;
+    }
   }
 }

@@ -90,7 +90,21 @@ class ThreatIntelService {
         timeout: 10000
       });
 
-      return { source: 'AlienVault OTX', data: response.data };
+      // Extract MITRE ATT&CK tags from pulse info
+      let mitreTags: string[] = [];
+      if (response.data?.pulse_info?.pulses) {
+        response.data.pulse_info.pulses.forEach((pulse: any) => {
+          if (pulse.attack_ids) {
+            pulse.attack_ids.forEach((attackId: string) => {
+              if (!mitreTags.includes(attackId)) {
+                mitreTags.push(attackId);
+              }
+            });
+          }
+        });
+      }
+
+      return { source: 'AlienVault OTX', data: response.data, mitreTags };
     } catch (error: any) {
       return { error: error.message };
     }
@@ -113,6 +127,21 @@ class ThreatIntelService {
     }
   }
 
+  static async enrichShodan(ip: string) {
+    try {
+      const apiKey = process.env.SHODAN_API_KEY;
+      if (!apiKey) return { error: 'Shodan API key not configured' };
+
+      const response = await axios.get(`https://api.shodan.io/shodan/host/${ip}?key=${apiKey}`, {
+        timeout: 10000
+      });
+
+      return { source: 'Shodan', data: response.data };
+    } catch (error: any) {
+      return { error: error.response?.data?.error || error.message };
+    }
+  }
+
   static async enrichIOC(ioc: string, type: string) {
     const results = [];
     switch (type) {
@@ -125,6 +154,7 @@ class ThreatIntelService {
         results.push(await this.enrichVirusTotal(ioc, 'ip'));
         results.push(await this.enrichAbuseIPDB(ioc));
         results.push(await this.enrichAlienVaultOTX(ioc, 'ip'));
+        results.push(await this.enrichShodan(ioc));
         break;
       case 'domain':
         results.push(await this.enrichVirusTotal(ioc, 'domain'));

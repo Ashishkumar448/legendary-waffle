@@ -25,13 +25,18 @@ Use this checklist to verify that all features in the application are working co
 - [ ] **Approve Contribution:** Switch back to **Account A**. Go to the `Contributions Inbox`. You should see the pending IP from Account B. Click "Approve". 
 - [ ] **Verification:** Go back to "Org A Campaign" and verify that `1.1.1.1` is now in the official IOC list!
 
-## 5. UI & Placeholders
+## 5. Advanced Tools & Visualizations
 - [ ] **Live Threat Map:** Go to `/dashboard/live-map` and verify the CheckPoint iframe loads and pulses.
-- [ ] **Search:** Go to `/dashboard/search` and verify the placeholder page renders without error.
-- [ ] **Graph Investigation:** Go to `/dashboard/graph` and verify the placeholder page renders without error.
-- [ ] **Timeline:** Go to `/dashboard/timeline` and verify the placeholder renders.
-- [ ] **What-If Sandbox:** Go to `/dashboard/what-if` and verify the placeholder renders.
+- [ ] **Lightning Global Search:** Go to `/dashboard/search`. Type a partial domain or campaign name. Verify results appear instantly, accommodating minor typos.
+- [ ] **Graph Investigation:** Go to `/dashboard/graph`. Verify the force-directed physics engine loads and that you can drag nodes around.
+- [ ] **What-If Sandbox Contagion:** Go to `/dashboard/what-if`. Click a node to make it "Patient Zero", adjust the Infection Rate slider, and click "Start Simulation". Verify the visual spread animation.
+- [ ] **SIEM Active Defense:** Go to a Campaign, click an IOC, and click the red "Push to Active Defense" button. Then navigate to `/dashboard/siem` and verify the IOC was added to the active firewall ledger.
 
 ## 6. Server/Background APIs
 - [ ] **Email Sync API:** Send an email to your dedicated Gmail account containing a URL. Then, make a POST request (using Postman or curl) to `http://localhost:3000/api/email-sync`. Verify it returns `success: true`.
 - [ ] **SIEM Webhook:** Make a POST request to `http://localhost:3000/api/webhook/siem` with a `Bearer` token matching your `.env` secret. Verify it returns `success: true`.
+
+## 7. Advanced Capabilities
+- [ ] **Shodan IP Context:** Add an IP address to a Campaign. Verify Shodan enrichment returns OS, ports, or vulnerabilities.
+- [ ] **MITRE Auto-Tagging:** Add a known malicious hash or domain. Verify purple MITRE tags appear on the IOC card.
+- [ ] **STIX 2.1 Export:** Open a Campaign, click Export -> STIX 2.1. Verify the `.json` bundle downloads and is correctly formatted.
