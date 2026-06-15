@@ -12,7 +12,7 @@ The following features have been implemented and are fully compatible with free 
 3. **Phishing Email Forwarding:** API endpoint (`/api/email-sync`) that uses IMAP to poll a dedicated Gmail inbox, parsing forwarded emails for URLs and storing them in the DB.
 4. **SIEM / SOAR Webhook Push:** Dedicated API endpoint (`/api/webhook/siem`) to ingest alerts from your SIEM.
 
-### Organizations & Collaboration (Phase 2)
+### Organizations & Collaboration
 5. **Organization Multi-Tenancy:** Users belong to an Organization, keeping private Threat Events scoped and isolated.
 6. **Threat Events (Campaigns):** Analysts can create Threat Events (e.g., APT campaigns) and upload IOCs directly into them rather than dumping them loosely.
 7. **Global Events Feed:** Real-time dashboard showing publicly shared Threat Events and MITRE tagged campaigns.
@@ -27,21 +27,27 @@ The following features have been implemented and are fully compatible with free 
 11. **Attack Timeline Reconstruction:** Chronological view of IOC observations.
 12. **"What-If" Contagion Sandbox:** An interactive playground to simulate lateral movement and blast radius. Select a "Patient Zero" and watch a mathematical contagion algorithm probabilistically infect connected infrastructure.
 
+### Advanced CTI Platform Expansion (Phases 2-5)
+13. **Personal Workspaces:** Daily Intelligence Briefing, Watchlist with Alerting toggles, and Org-wide Activity Feeds.
+14. **IOC-Centric Views:** Detailed IOC Pages, Triage Queue for bulk processing, Sightings Log for internal telemetry, and Side-by-side IOC Comparison.
+15. **Threat Intelligence Views:** Threat Actor Profiles (Hybrid manual/API), MITRE ATT&CK Matrix Heatmap, CVE Tracker, and Global Geo Heatmap using Leaflet.
+16. **Collaboration & Reporting:** Threaded Comments on IOCs, Public 24-Hour Share Links, PDF Reports Center, and immutable Audit Logs.
+17. **Role-Based Access Control (RBAC):** Organization Admins can manage Analyst and Viewer permissions.
+
 ### Data Inputs & Details
-13. **Contextual Enriched Events:** Campaigns and IOCs now support detailed Context notes, and feature interactive Modals for copying intelligence and warning of cross-campaign IOC correlations.
-32. **Robust Email Ingestion:** IMAP processor correctly parses and ingests raw or multipart text emails directly into the DB.
-33. **Lightning Global Search:** An instantaneous, client-side fuzzy search engine (powered by Fuse.js) that handles typos and instantly searches across thousands of IOCs and Campaigns without backend delays.
-34. **Active Defense SIEM Dashboard:** A mock Security Operations Center (SOC) view featuring live metrics, a simulated firewall syslog terminal, and a real-time blocklist ledger tracking every IOC "Pushed to Defense".
-35. **Shodan Integration:** Deep infrastructure scanning for IPs including open ports, banners, and vulnerabilities.
-36. **MITRE ATT&CK Auto-Tagging:** AlienVault OTX integration extracts and automatically tags IOCs with official MITRE technique badges.
-37. **STIX 2.1 & CSV Exports:** Pure client-side compute engine to instantly export threat campaigns into STIX 2.1 JSON bundles or flat CSVs.
+18. **Contextual Enriched Events:** Campaigns and IOCs now support detailed Context notes, and feature interactive Modals for copying intelligence and warning of cross-campaign IOC correlations.
+19. **Robust Email Ingestion:** IMAP processor correctly parses and ingests raw or multipart text emails directly into the DB.
+20. **Lightning Global Search:** An instantaneous, client-side fuzzy search engine (powered by Fuse.js) that handles typos and instantly searches across thousands of IOCs and Campaigns without backend delays.
+21. **Active Defense SIEM Dashboard:** A mock Security Operations Center (SOC) view featuring live metrics, a simulated firewall syslog terminal, and a real-time blocklist ledger tracking every IOC "Pushed to Defense".
+22. **Shodan Integration:** Deep infrastructure scanning for IPs including open ports, banners, and vulnerabilities.
+23. **MITRE ATT&CK Auto-Tagging:** AlienVault OTX integration extracts and automatically tags IOCs with official MITRE technique badges.
+24. **STIX 2.1 & CSV Exports:** Pure client-side compute engine to instantly export threat campaigns into STIX 2.1 JSON bundles or flat CSVs.
 
 ## Excluded Features
 
 The following features from the original specification were **omitted** as they require paid infrastructure, complex background workers, or exceed serverless capabilities:
 
 - **Malware Sample Upload & Detonation:** Requires an expensive live sandbox environment (e.g., Cuckoo or Any.Run commercial APIs).
-- **Automated Watchlist / Alerting:** Continuous background polling and alerting requires Firebase Cloud Functions (only available on the paid Blaze plan) or dedicated cron servers.
 - **Browser Extension w/ Screenshots:** Rendering screenshots of malicious domains requires headless Chrome environments, which exceed free serverless function size and timeout limits.
 - **Honeypot Infrastructure:** Requires maintaining live VM honeypots to capture C2 traffic.
 

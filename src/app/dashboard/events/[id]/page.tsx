@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { db, auth } from "@/lib/firebase";
 import { doc, getDoc, updateDoc, arrayUnion, collection, addDoc } from "firebase/firestore";
-import { ShieldCheck, Plus, Link as LinkIcon, TriangleAlert, Activity, ArrowLeft, X, ShieldAlert, Download, Bot, Radar } from "lucide-react";
+import { ShieldCheck, Plus, Link as LinkIcon, TriangleAlert, Activity, ArrowLeft, X, ShieldAlert, Download, Bot, Radar, Share2 } from "lucide-react";
 import Link from "next/link";
+import Comments from "@/components/Comments";
 
 export default function EventDetailsPage() {
   const { id } = useParams();
@@ -302,6 +303,17 @@ export default function EventDetailsPage() {
             >
               <Plus className="w-4 h-4 mr-2" /> Propose Contribution
             </Link>
+          )}
+          {event.isPublic && (
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/share/${id}`);
+                alert("Public link copied to clipboard!");
+              }}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2 px-4 rounded-lg text-sm transition-all flex items-center"
+            >
+              <Share2 className="w-4 h-4 mr-2" /> Share Link
+            </button>
           )}
           <div className="relative">
             <button 
@@ -615,6 +627,11 @@ export default function EventDetailsPage() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+      {isOwner && event?.organizationId && (
+        <div className="mt-8">
+          <Comments eventId={event.id} orgId={event.organizationId} />
         </div>
       )}
     </div>

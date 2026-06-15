@@ -6,6 +6,7 @@ Use this checklist to verify that all features in the application are working co
 - [ ] **Email Registration:** Register a new user with Email/Password. Verify that an Organization is automatically created for them in the Firebase Console.
 - [ ] **Google Sign-In:** Click the Google button and sign in. Verify that it routes to the dashboard and creates a new Organization for the Google user.
 - [ ] **My Organization Dashboard:** Navigate to `/dashboard/organization`. Verify you see your organization name, your user listed as a member, and the settings toggle.
+- [ ] **Role-Based Access Control (RBAC):** As an admin, change a member's role to Analyst or Viewer.
 
 ## 2. Core Enrichment
 - [ ] **Manual Submission:** Navigate to the Manual Enrichment page.
@@ -40,3 +41,12 @@ Use this checklist to verify that all features in the application are working co
 - [ ] **Shodan IP Context:** Add an IP address to a Campaign. Verify Shodan enrichment returns OS, ports, or vulnerabilities.
 - [ ] **MITRE Auto-Tagging:** Add a known malicious hash or domain. Verify purple MITRE tags appear on the IOC card.
 - [ ] **STIX 2.1 Export:** Open a Campaign, click Export -> STIX 2.1. Verify the `.json` bundle downloads and is correctly formatted.
+
+## 8. CTI Expansion Features (Phase 2-5)
+- [ ] **Watchlist:** Go to `/dashboard/watchlist`. Add an IOC and verify it appears. Toggle the email alert button.
+- [ ] **Activity Feed:** Go to `/dashboard/activity`. Verify recent organizational actions (like IOC additions) appear.
+- [ ] **Daily Briefing:** Go to `/dashboard/briefing`. Verify the dashboard loads your statistics correctly.
+- [ ] **Threat Intel Views:** Visit `/dashboard/actors`, `/dashboard/mitre-matrix`, `/dashboard/cve`, and `/dashboard/geo` to verify the new UI placeholders render properly.
+- [ ] **IOC-Centric Views:** Visit `/dashboard/triage`, `/dashboard/sightings`, and `/dashboard/compare` to verify navigation and layout.
+- [ ] **Collaboration & Reporting:** Visit `/dashboard/reports` and `/dashboard/audit`.
+- [ ] **Public Share Links:** Trigger a share link generation and navigate to `/share/[token]` to verify the read-only page loads.

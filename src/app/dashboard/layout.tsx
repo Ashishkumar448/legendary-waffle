@@ -5,6 +5,7 @@ import { auth } from "@/lib/firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import WelcomeTour from "@/components/WelcomeTour";
 import { 
   ShieldAlert, 
   Search, 
@@ -20,7 +21,19 @@ import {
   Inbox,
   Activity,
   Server,
-  Network
+  Network,
+  Newspaper,
+  Eye,
+  Bell,
+  Filter,
+  Crosshair,
+  GitCompare,
+  Ghost,
+  Grid,
+  Bug,
+  Map,
+  FileText,
+  ClipboardList
 } from "lucide-react";
 
 function SidebarNav({ 
@@ -129,6 +142,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   };
 
   const navItems = [
+    { name: "Daily Briefing", href: "/dashboard/briefing", icon: Newspaper },
+    { name: "My Watchlist", href: "/dashboard/watchlist", icon: Eye },
+    { name: "Activity Feed", href: "/dashboard/activity", icon: Bell },
     { name: "My Organization", href: "/dashboard/organization", icon: Building },
     { 
       name: "Threat Events", 
@@ -143,6 +159,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: "Manual Enrichment", href: "/dashboard", icon: ShieldAlert },
     { name: "Bulk Upload", href: "/dashboard/bulk", icon: Upload },
     { name: "Global Search", href: "/dashboard/search", icon: Search },
+    { name: "Triage Queue", href: "/dashboard/triage", icon: Filter },
+    { name: "Sightings Log", href: "/dashboard/sightings", icon: Crosshair },
+    { name: "IOC Comparison", href: "/dashboard/compare", icon: GitCompare },
+    { name: "Threat Actors", href: "/dashboard/actors", icon: Ghost },
+    { name: "MITRE ATT&CK", href: "/dashboard/mitre-matrix", icon: Grid },
+    { name: "CVE Tracker", href: "/dashboard/cve", icon: Bug },
+    { name: "Geo Heatmap", href: "/dashboard/geo", icon: Map },
+    { name: "Reports Center", href: "/dashboard/reports", icon: FileText },
+    { name: "Audit Log", href: "/dashboard/audit", icon: ClipboardList },
     { name: "Live Threat Map", href: "/dashboard/live-map", icon: Activity },
     { name: "Graph Investigation", href: "/dashboard/graph", icon: Share2 },
     { name: "Pivot Explorer", href: "/dashboard/pivot", icon: Network },
@@ -156,7 +181,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="h-screen bg-zinc-950 text-zinc-100 flex overflow-hidden">
+    <div className="min-h-screen bg-zinc-950 text-zinc-50 flex h-screen overflow-hidden">
+      <WelcomeTour />
       <div className="lg:hidden fixed top-4 left-4 z-50">
         <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 bg-zinc-800 rounded-lg text-zinc-400 hover:text-white">
           {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
