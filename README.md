@@ -7,20 +7,24 @@ IOCAG Web is a modern Next.js application designed to streamline the gathering, 
 The following features have been implemented and are fully compatible with free tier infrastructure (Firebase Spark Plan, Free API limits, and Vercel/Next.js limits):
 
 ### Core Enrichment
-1. **Manual IOC Submission:** Submit domains, IPs, hashes, or URLs for deep enrichment via VirusTotal, URLhaus, MalwareBazaar, AlienVault OTX, and AbuseIPDB.
-2. **Bulk Upload:** Upload CSV or JSON files to enrich multiple IOCs (sequential processing to respect API rate limits).
+1. **Manual IOC Submission:** Submit domains, IPs, hashes, or URLs for deep enrichment via VirusTotal, URLhaus, MalwareBazaar, AlienVault OTX, AbuseIPDB, and Frostbyte.
+2. **Bulk Upload (Auto-Enrichment):** Upload CSV or JSON files to automatically enrich multiple IOCs in the background (sequential processing to respect API rate limits).
 3. **Phishing Email Forwarding:** API endpoint (`/api/email-sync`) that uses IMAP to poll a dedicated Gmail inbox, parsing forwarded emails for URLs and storing them in the DB.
-4. **SIEM / SOAR Webhook Push:** Dedicated API endpoint (`/api/webhook/siem`) to ingest alerts from your SIEM.
+4. **SIEM / SOAR Webhook Push (Auto-Enrichment):** Dedicated API endpoint (`/api/webhook/siem`) to ingest alerts from your SIEM. Any ingested IOCs are automatically queued for background enrichment.
 
 ### Organizations & Collaboration
-5. **Organization Multi-Tenancy:** Users belong to an Organization, keeping private Threat Events scoped and isolated.
-6. **Threat Events (Campaigns):** Analysts can create Threat Events (e.g., APT campaigns) and upload IOCs directly into them rather than dumping them loosely.
+5. **Organization Multi-Tenancy:** Users belong to an Organization, keeping private Threat Events scoped and isolated. Admins can manage users and toggle Org-wide auto-enrichment settings.
+6. **Threat Events (Campaigns):** Analysts can create Threat Events (e.g., APT campaigns) and upload IOCs directly into them rather than dumping them loosely. Added IOCs are automatically enriched in real-time.
 7. **Global Events Feed:** Real-time dashboard showing publicly shared Threat Events and MITRE tagged campaigns.
 8. **Cross-Organization Contributions:** Analysts from Org A can propose IOC additions to Threat Events owned by Org B. Org B admins can review and approve/reject these inside their Contributions Inbox.
 9. **Live Threat Map:** Global real-time visualization of cyber attacks.
 
+### AI & Machine Learning
+10. **AI Threat Attribution Engine:** Powered by Groq/LLaMA3, automatically analyzes Campaign IOCs and MITRE tags to match behavioral patterns against known Advanced Persistent Threats (APTs) with confidence scoring.
+11. **AI Executive Reporting:** Automatically generates highly professional, 3-paragraph executive threat narratives (Summary, Technical Analysis, Recommendations) for any Threat Campaign.
+
 ### Analysis & Visualization
-10. **Graph Investigation (Enhanced):** Highly advanced, interactive node-based correlation web.
+12. **Graph Investigation (Enhanced):** Highly advanced, interactive node-based correlation web.
     - **Physics Engine:** Custom D3 force logic automatically centers disconnected campaigns and spreads massive highly-connected datasets without overlapping.
     - **Interactive Controls:** Built-in floating UI for directional Panning, precise Zooming, Auto-Fit centering, and 90° Canvas Rotation.
     - **Search & Highlight:** Real-time search bar that illuminates queried IOCs (in amber), their connected Campaigns (in orange), and fades out irrelevant data for forensic focus.

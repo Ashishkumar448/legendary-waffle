@@ -142,6 +142,28 @@ class ThreatIntelService {
     }
   }
 
+  static async enrichFrostbyte(ip: string) {
+    try {
+      // Attempt to look up the IP address
+      const response = await axios.get(`https://agent-gateway-kappa.vercel.app/ip/json/${ip}`, {
+        timeout: 10000
+      });
+
+      return { source: 'Frostbyte (Agent Gateway)', data: response.data };
+    } catch (error: any) {
+      try {
+        // Fallback to query param if path fails
+        const fallbackResponse = await axios.get(`https://agent-gateway-kappa.vercel.app/ip/json`, {
+          params: { ip },
+          timeout: 10000
+        });
+        return { source: 'Frostbyte (Agent Gateway)', data: fallbackResponse.data };
+      } catch (fallbackError: any) {
+        return { error: fallbackError.message };
+      }
+    }
+  }
+
   static async enrichIOC(ioc: string, type: string) {
     const results = [];
     switch (type) {
@@ -155,6 +177,7 @@ class ThreatIntelService {
         results.push(await this.enrichAbuseIPDB(ioc));
         results.push(await this.enrichAlienVaultOTX(ioc, 'ip'));
         results.push(await this.enrichShodan(ioc));
+        results.push(await this.enrichFrostbyte(ioc));
         break;
       case 'domain':
         results.push(await this.enrichVirusTotal(ioc, 'domain'));

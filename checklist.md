@@ -6,17 +6,19 @@ Use this checklist to verify that all features in the application are working co
 - [ ] **Email Registration:** Register a new user with Email/Password. Verify that an Organization is automatically created for them in the Firebase Console.
 - [ ] **Google Sign-In:** Click the Google button and sign in. Verify that it routes to the dashboard and creates a new Organization for the Google user.
 - [ ] **My Organization Dashboard:** Navigate to `/dashboard/organization`. Verify you see your organization name, your user listed as a member, and the settings toggle.
+- [ ] **Organization Settings:** Toggle the "Auto-Enrich New IOCs" switch and verify it saves successfully.
 - [ ] **Role-Based Access Control (RBAC):** As an admin, change a member's role to Analyst or Viewer.
 
 ## 2. Core Enrichment
 - [ ] **Manual Submission:** Navigate to the Manual Enrichment page.
 - [ ] Enter a known malicious hash (e.g., `44d88612fea8a8f36de82e1278abb02f`) and verify results from VirusTotal, MalwareBazaar, and AlienVault OTX.
-- [ ] Enter a known bad IP (e.g., `8.8.8.8`) and verify results from AbuseIPDB.
-- [ ] **Bulk Upload:** Go to `/dashboard/bulk`. Upload a sample CSV containing 2-3 IPs or hashes. Verify that the table populates with the parsed IOCs.
+- [ ] Enter a known bad IP (e.g., `8.8.8.8`) and verify results from AbuseIPDB and Frostbyte.
+- [ ] Enter a known malicious URL and verify results from URLhaus.
+- [ ] **Bulk Upload (Auto-Enrichment):** Go to `/dashboard/bulk`. Upload a sample CSV containing 2-3 IPs or hashes. Verify that the table populates with the parsed IOCs and that they are automatically enriched in the background.
 
 ## 3. Threat Events (Campaigns)
 - [ ] **Create Event:** Go to `Global Threat Events` -> `New Event`. Name it "Test Campaign", check "Share globally", and click Create.
-- [ ] **Event Details:** Open "Test Campaign". Under "Add IOC to Campaign", type a domain (e.g., `test.com`), select "Domain", and click Add. Verify it appears in the list below.
+- [ ] **Event Details (Auto-Enrichment):** Open "Test Campaign". Under "Add IOC to Campaign", type a domain (e.g., `test.com`), select "Domain", and click Add. Verify it appears in the list below and automatically fetches enrichment context (e.g., MITRE tags).
 
 ## 4. Cross-Organization Collaboration
 > *Note: This requires logging in with two different accounts.*
@@ -35,7 +37,7 @@ Use this checklist to verify that all features in the application are working co
 
 ## 6. Server/Background APIs
 - [ ] **Email Sync API:** Send an email to your dedicated Gmail account containing a URL. Then, make a POST request (using Postman or curl) to `http://localhost:3000/api/email-sync`. Verify it returns `success: true`.
-- [ ] **SIEM Webhook:** Make a POST request to `http://localhost:3000/api/webhook/siem` with a `Bearer` token matching your `.env` secret. Verify it returns `success: true`.
+- [ ] **SIEM Webhook (Auto-Enrichment):** Make a POST request to `http://localhost:3000/api/webhook/siem` with a `Bearer` token matching your `.env` secret. Verify it returns `success: true` and that the pushed IOC is automatically queued for background enrichment.
 
 ## 7. Advanced Capabilities
 - [ ] **Shodan IP Context:** Add an IP address to a Campaign. Verify Shodan enrichment returns OS, ports, or vulnerabilities.
@@ -50,3 +52,7 @@ Use this checklist to verify that all features in the application are working co
 - [ ] **IOC-Centric Views:** Visit `/dashboard/triage`, `/dashboard/sightings`, and `/dashboard/compare` to verify navigation and layout.
 - [ ] **Collaboration & Reporting:** Visit `/dashboard/reports` and `/dashboard/audit`.
 - [ ] **Public Share Links:** Trigger a share link generation and navigate to `/share/[token]` to verify the read-only page loads.
+
+## 9. AI Capabilities (Groq / LLaMA3)
+- [ ] **AI Threat Attribution:** Open a Threat Campaign containing several enriched IOCs. Click the "Generate AI Attribution" button (or similar) and verify it returns potential APT matches with confidence scores.
+- [ ] **AI Executive Report:** Open a Threat Campaign. Click the "Generate AI Report" button and verify it generates a professional 3-paragraph executive summary, technical analysis, and recommendations.
